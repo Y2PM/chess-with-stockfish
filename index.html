@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v14 -->
+  <!-- Chessboard.js CSS via unpkg v15 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
     body {
@@ -23,7 +23,7 @@
       margin-bottom: 10px;
     }
     /* Row for file upload */
-    #uploadRow {
+    #uploadRow, #uploadOppRow {
       margin-bottom: 10px;
     }
     /* Container for board + status side by side */
@@ -127,10 +127,15 @@
     <label for="darkToggle">Dark Mode:</label>
     <input type="checkbox" id="darkToggle" />
   </div>
-  <!-- Upload row for king image -->
+  <!-- Upload row for human player's king image -->
   <div id="uploadRow">
     <input type="file" id="uploadKing" accept="image/*" style="vertical-align:middle;">
-    <label for="uploadKing" style="vertical-align:middle;">Upload King Image (optional, for your king only)</label>
+    <label for="uploadKing" style="vertical-align:middle;">Upload Your King Image (optional)</label>
+  </div>
+  <!-- Upload row for opponent king image -->
+  <div id="uploadOppRow">
+    <input type="file" id="uploadOppKing" accept="image/*" style="vertical-align:middle;">
+    <label for="uploadOppKing" style="vertical-align:middle;">Upload Opponent King Image (optional)</label>
   </div>
 
   <!-- Main container: board on the left, status on the right -->
@@ -199,13 +204,14 @@
     var game = new Chess();
     var playerColor = "white";
     var difficulty = 10; // Default search depth for Stockfish
-    var customKingImage = null; // Global variable for custom king image (data URL)
+    var customKingImage = null;      // For the human player's king
+    var customOppKingImage = null;   // For the opponent's king
     // Captured pieces containers will be set on game start.
     var capturedTopContainer, capturedBottomContainer;
     var gameStatusEl = document.getElementById("gameStatus");
     var moveListEl = document.getElementById("moveList");
 
-    // Event listener for the king image upload.
+    // Event listener for the human king image upload.
     document.getElementById("uploadKing").addEventListener("change", function(e) {
       var file = e.target.files[0];
       if (!file) return;
@@ -213,7 +219,6 @@
       reader.onload = function(event) {
         var img = new Image();
         img.onload = function() {
-          // Create a canvas to resize the image to 50x50 px.
           var canvas = document.createElement("canvas");
           canvas.width = 50;
           canvas.height = 50;
@@ -226,14 +231,43 @@
       reader.readAsDataURL(file);
     });
 
-    // Piece theme function: if custom king image is available and the piece is the human player's king, use it.
+    // Event listener for the opponent king image upload.
+    document.getElementById("uploadOppKing").addEventListener("change", function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(event) {
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.createElement("canvas");
+          canvas.width = 50;
+          canvas.height = 50;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, 50, 50);
+          customOppKingImage = canvas.toDataURL();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Piece theme function: use custom images if provided.
     function customPieceTheme(piece) {
-      if (customKingImage) {
-        if (playerColor === "white" && piece === "wK") {
+      // If playing as white, human's king is wK, opponent's king is bK.
+      // If playing as black, human's king is bK, opponent's king is wK.
+      if (playerColor === "white") {
+        if (piece === "wK" && customKingImage) {
           return customKingImage;
         }
-        if (playerColor === "black" && piece === "bK") {
+        if (piece === "bK" && customOppKingImage) {
+          return customOppKingImage;
+        }
+      } else if (playerColor === "black") {
+        if (piece === "bK" && customKingImage) {
           return customKingImage;
+        }
+        if (piece === "wK" && customOppKingImage) {
+          return customOppKingImage;
         }
       }
       return "https://chessboardjs.com/img/chesspieces/wikipedia/" + piece + ".png";

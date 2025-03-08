@@ -112,6 +112,10 @@
         // Use external piece images hosted on chessboardjs.com
         pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
       });
+      // If playing as black, let Stockfish (white) move first.
+      if (playerColor === 'black') {
+        setTimeout(makeBestMove, 250);
+      }
     });
   </script>
 </body>

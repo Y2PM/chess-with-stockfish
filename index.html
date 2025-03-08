@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v12 -->
+  <!-- Chessboard.js CSS via unpkg v13 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
     body {
@@ -54,7 +54,7 @@
     }
     #fileNotation div {
       display: inline-block;
-      width: 49px; /* Slightly less than 50 to avoid over-spacing */
+      width: 49px; /* Slightly less than 50 to avoid spacing issues */
       text-align: center;
     }
     /* Rank (numbers) notation styling */
@@ -117,6 +117,10 @@
       <option value="white" selected>White</option>
       <option value="black">Black</option>
     </select>
+    &nbsp;&nbsp;
+    <!-- Upload King Image input -->
+    <input type="file" id="uploadKing" accept="image/*" style="vertical-align:middle;">
+    <label for="uploadKing" style="vertical-align:middle;">Upload King Image (optional)</label>
     &nbsp;&nbsp;
     <button id="startBtn">Start Game</button>
     &nbsp;&nbsp;
@@ -190,17 +194,48 @@
     var game = new Chess();
     var playerColor = "white";
     var difficulty = 10; // Default search depth for Stockfish
+    var customKingImage = null; // Global variable for custom king image (data URL)
     // Captured pieces containers will be set on game start.
     var capturedTopContainer, capturedBottomContainer;
     var gameStatusEl = document.getElementById("gameStatus");
     var moveListEl = document.getElementById("moveList");
+
+    // Event listener for the king image upload.
+    document.getElementById("uploadKing").addEventListener("change", function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(event) {
+        var img = new Image();
+        img.onload = function() {
+          // Create a canvas to resize the image to 50x50 px.
+          var canvas = document.createElement("canvas");
+          canvas.width = 50;
+          canvas.height = 50;
+          var ctx = canvas.getContext("2d");
+          // Draw the image with auto resizing.
+          ctx.drawImage(img, 0, 0, 50, 50);
+          customKingImage = canvas.toDataURL();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Piece theme function: if custom king image is available, use it for kings.
+    function customPieceTheme(piece) {
+      if ((piece === "wK" || piece === "bK") && customKingImage) {
+        return customKingImage;
+      }
+      return "https://chessboardjs.com/img/chesspieces/wikipedia/" + piece + ".png";
+    }
 
     // Initialize an empty board (using an empty FEN for no pieces)
     board = Chessboard("board", {
       position: "8/8/8/8/8/8/8/8",
       draggable: false,
       showNotation: false,
-      pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
+      pieceTheme: customPieceTheme
     });
 
     // Dark mode toggle handler
@@ -327,13 +362,9 @@
         status = "";
       }
       
-      // Set status color based on the message:
-      // Good (green) if your opponent is in trouble,
-      // Bad (red) if you're in trouble,
-      // Neutral (blue) for draws or stalemates.
+      // Set status color: green (good), red (bad), blue (neutral)
       var statusColor = "blue"; // default neutral
       var playerColorCap = playerColor.charAt(0).toUpperCase() + playerColor.slice(1);
-      
       if (status.includes("wins by checkmate!")) {
         if (status.startsWith(playerColorCap)) {
           statusColor = "green"; // you win
@@ -341,12 +372,12 @@
           statusColor = "red"; // you lose
         }
       } else if (status === "Stalemate!" || status.includes("Draw")) {
-        statusColor = "blue"; // neutral draw
+        statusColor = "blue"; // neutral
       } else if (status.includes("is in check!")) {
         if (status.startsWith(playerColorCap)) {
-          statusColor = "red"; // you are in check
+          statusColor = "red"; // you're in check
         } else {
-          statusColor = "green"; // opponent is in check
+          statusColor = "green"; // opponent in check
         }
       }
       gameStatusEl.innerHTML = status;
@@ -377,7 +408,7 @@
         draggable: true,
         onDrop: onDrop,
         showNotation: false,
-        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
+        pieceTheme: customPieceTheme
       });
 
       if (playerColor === "black") {

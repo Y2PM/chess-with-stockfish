@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v1 -->
+  <!-- Chessboard.js CSS via unpkg v2 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   <style>
     body {
@@ -22,22 +22,42 @@
     #controls {
       margin-bottom: 10px;
     }
-    /* Board container styling */
-    #boardContainer {
-      position: relative;
-      display: inline-block;
-      margin: 20px;
-    }
     /* Captured pieces containers */
     #capturedTop, #capturedBottom {
       margin: 10px auto;
       width: 400px;
       min-height: 40px;
     }
-    /* Adjust chessboard notation if present */
-    .chessboard .notation {
-      font-size: 14px;
+    /* Board wrapper with fixed size */
+    #boardWrapper {
+      display: inline-block;
+      position: relative;
+      width: 400px;
+      height: 400px;
+      margin: 20px;
+    }
+    /* Notation styling */
+    #fileNotation, #rankNotation {
       color: inherit;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    #fileNotation {
+      position: absolute;
+      bottom: -20px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      display: none;
+    }
+    #rankNotation {
+      position: absolute;
+      top: 0;
+      left: -20px;
+      height: 100%;
+      display: none;
+      text-align: center;
+      line-height: 50px; /* 400px/8 squares */
     }
   </style>
 </head>
@@ -64,8 +84,13 @@
   </div>
   <!-- Captured pieces containers -->
   <div id="capturedTop"></div>
-  <div id="boardContainer">
-    <div id="board"></div>
+  <!-- Board wrapper with external coordinate notation -->
+  <div id="boardWrapper">
+    <div id="board" style="width: 100%; height: 100%;"></div>
+    <div id="fileNotation">a b c d e f g h</div>
+    <div id="rankNotation">
+      8<br>7<br>6<br>5<br>4<br>3<br>2<br>1
+    </div>
   </div>
   <div id="capturedBottom"></div>
 
@@ -103,12 +128,12 @@
     var game = new Chess();
     var playerColor = 'white';
     var difficulty = 10; // Default search depth for Stockfish
-    // Containers for captured pieces (will be assigned on start)
+    // Captured pieces containers will be set on game start.
     var capturedTopContainer, capturedBottomContainer;
 
-    // Initially, display an empty board (no pieces, no notation)
+    // Initialize an empty board (using an empty FEN for a board with no pieces)
     board = Chessboard('board', {
-      position: {},  // empty board
+      position: "8/8/8/8/8/8/8/8",
       draggable: false,
       showNotation: false,
       pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
@@ -132,7 +157,7 @@
       });
       if (move === null) return 'snapback';
 
-      // If a piece was captured, update the appropriate captured pieces container.
+      // Update captured pieces containers if a piece was captured.
       if(move.captured) {
         var capturedPieceCode;
         // For white's move, captured piece is black; for black's move, captured is white.
@@ -171,9 +196,6 @@
           var bestMove = line.split(" ")[1];
           game.move(bestMove, {sloppy: true});
           board.position(game.fen());
-          // Check if Stockfish's move captured a piece.
-          // (We can detect this by comparing the FEN before/after or by using chess.js history.
-          // For simplicity, this demo only handles captures on player's moves.)
         }
       };
     }
@@ -186,24 +208,25 @@
       // Reset captured pieces containers
       document.getElementById('capturedTop').innerHTML = "";
       document.getElementById('capturedBottom').innerHTML = "";
-      // Set container assignment based on player's chosen color.
-      // If player is white, then white (player) is at the bottom.
+      // Assign captured pieces containers based on player's side.
       if(playerColor === 'white') {
-        capturedBottomContainer = document.getElementById('capturedBottom'); // will hold pieces captured by white (i.e. black pieces)
-        capturedTopContainer = document.getElementById('capturedTop');         // will hold pieces captured by black (i.e. white pieces)
+        capturedBottomContainer = document.getElementById('capturedBottom'); // player's captures (black pieces)
+        capturedTopContainer = document.getElementById('capturedTop');         // opponent's captures (white pieces)
       } else {
-        capturedBottomContainer = document.getElementById('capturedBottom'); // will hold pieces captured by black (i.e. white pieces)
-        capturedTopContainer = document.getElementById('capturedTop');         // will hold pieces captured by white (i.e. black pieces)
+        capturedBottomContainer = document.getElementById('capturedBottom'); // player's captures (white pieces)
+        capturedTopContainer = document.getElementById('capturedTop');         // opponent's captures (black pieces)
       }
-      // If a board instance already exists, destroy it.
-      if(board.destroy) { board.destroy(); }
-      // Reinitialize the board with the starting position, pieces, draggable enabled, and show notation.
+      // Show external notation
+      document.getElementById('fileNotation').style.display = 'block';
+      document.getElementById('rankNotation').style.display = 'block';
+      
+      // Reinitialize the board with the starting position and enable moves.
       board = Chessboard('board', {
         position: 'start',
         orientation: playerColor,
         draggable: true,
         onDrop: onDrop,
-        showNotation: true,
+        showNotation: false,  // We use our external notation
         pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
       });
       // If playing as black, let Stockfish (white) move first.

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v13 -->
+  <!-- Chessboard.js CSS via unpkg v14 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
     body {
@@ -20,6 +20,10 @@
       color: #ddd;
     }
     #controls {
+      margin-bottom: 10px;
+    }
+    /* Row for file upload */
+    #uploadRow {
       margin-bottom: 10px;
     }
     /* Container for board + status side by side */
@@ -118,14 +122,15 @@
       <option value="black">Black</option>
     </select>
     &nbsp;&nbsp;
-    <!-- Upload King Image input -->
-    <input type="file" id="uploadKing" accept="image/*" style="vertical-align:middle;">
-    <label for="uploadKing" style="vertical-align:middle;">Upload King Image (optional)</label>
-    &nbsp;&nbsp;
     <button id="startBtn">Start Game</button>
     &nbsp;&nbsp;
     <label for="darkToggle">Dark Mode:</label>
     <input type="checkbox" id="darkToggle" />
+  </div>
+  <!-- Upload row for king image -->
+  <div id="uploadRow">
+    <input type="file" id="uploadKing" accept="image/*" style="vertical-align:middle;">
+    <label for="uploadKing" style="vertical-align:middle;">Upload King Image (optional, for your king only)</label>
   </div>
 
   <!-- Main container: board on the left, status on the right -->
@@ -213,7 +218,6 @@
           canvas.width = 50;
           canvas.height = 50;
           var ctx = canvas.getContext("2d");
-          // Draw the image with auto resizing.
           ctx.drawImage(img, 0, 0, 50, 50);
           customKingImage = canvas.toDataURL();
         };
@@ -222,10 +226,15 @@
       reader.readAsDataURL(file);
     });
 
-    // Piece theme function: if custom king image is available, use it for kings.
+    // Piece theme function: if custom king image is available and the piece is the human player's king, use it.
     function customPieceTheme(piece) {
-      if ((piece === "wK" || piece === "bK") && customKingImage) {
-        return customKingImage;
+      if (customKingImage) {
+        if (playerColor === "white" && piece === "wK") {
+          return customKingImage;
+        }
+        if (playerColor === "black" && piece === "bK") {
+          return customKingImage;
+        }
       }
       return "https://chessboardjs.com/img/chesspieces/wikipedia/" + piece + ".png";
     }

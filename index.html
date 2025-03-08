@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v9 -->
+  <!-- Chessboard.js CSS via unpkg v10 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
     body {
@@ -54,7 +54,7 @@
     }
     #fileNotation div {
       display: inline-block;
-      width: 49px;
+      width: 49px; /* Slightly less than 50 to avoid spacing issues */
       text-align: center;
     }
     /* Rank (numbers) notation styling */
@@ -80,11 +80,26 @@
       vertical-align: top;
       margin-left: 20px;
       text-align: left;
+      max-width: 250px;
     }
     #gameStatus {
       font-weight: bold;
       margin-top: 10px;
       min-height: 1.5em;
+    }
+    /* Move history styling */
+    #moveList {
+      margin-top: 10px;
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    /* Dark mode for move history */
+    .dark-mode #moveList {
+      background: #333;
     }
   </style>
 </head>
@@ -112,7 +127,7 @@
 
   <!-- Main container: board on the left, status on the right -->
   <div id="mainContainer">
-    <!-- Captured pieces containers -->
+    <!-- Captured pieces above the board -->
     <div id="capturedTop"></div>
     <!-- Board wrapper with external coordinate notation -->
     <div id="boardWrapper">
@@ -138,6 +153,8 @@
   <div id="statusPanel">
     <h2>Game Status</h2>
     <div id="gameStatus"></div>
+    <h3>Moves</h3>
+    <div id="moveList"></div>
   </div>
 
   <!-- jQuery (required by Chessboard.js) -->
@@ -177,13 +194,14 @@
     // Captured pieces containers will be set on game start.
     var capturedTopContainer, capturedBottomContainer;
     var gameStatusEl = document.getElementById("gameStatus");
+    var moveListEl = document.getElementById("moveList");
 
     // Initialize an empty board (using an empty FEN for no pieces)
     board = Chessboard("board", {
       position: "8/8/8/8/8/8/8/8",
       draggable: false,
       showNotation: false,
-      pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+      pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
     });
 
     // Dark mode toggle handler
@@ -194,6 +212,19 @@
         document.body.classList.remove("dark-mode");
       }
     });
+
+    // Update the move history display in PGN-like notation
+    function updateMoveList() {
+      var history = game.history();
+      var moveText = "";
+      for (var i = 0; i < history.length; i++) {
+        if (i % 2 === 0) {
+          moveText += ((i / 2) + 1) + ". ";
+        }
+        moveText += history[i] + " ";
+      }
+      moveListEl.innerHTML = moveText.trim();
+    }
 
     // Shared function to update captured pieces based on a move
     function updateCaptured(move) {
@@ -240,6 +271,7 @@
         updateCaptured(move);
       }
       updateGameStatus(); // Check if the move ended the game
+      updateMoveList();   // Update move history
 
       // After player's move, let Stockfish respond.
       window.setTimeout(makeBestMove, 250);
@@ -264,6 +296,7 @@
             updateCaptured(move);
           }
           updateGameStatus(); // Check if the move ended the game
+          updateMoveList();   // Update move history
         }
       };
     }
@@ -307,6 +340,7 @@
       document.getElementById("capturedTop").innerHTML = "";
       document.getElementById("capturedBottom").innerHTML = "";
       gameStatusEl.innerHTML = "";
+      moveListEl.innerHTML = "";
 
       if (playerColor === "white") {
         capturedBottomContainer = document.getElementById("capturedBottom");
@@ -323,12 +357,13 @@
         draggable: true,
         onDrop: onDrop,
         showNotation: false,
-        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+        pieceTheme: "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png"
       });
 
       if (playerColor === "black") {
         setTimeout(makeBestMove, 250);
       }
+      updateMoveList(); // Initialize move list display
     });
   </script>
 </body>

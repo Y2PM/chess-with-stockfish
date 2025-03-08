@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v10 -->
+  <!-- Chessboard.js CSS via unpkg v11 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
     body {
@@ -97,7 +97,6 @@
       max-height: 300px;
       overflow-y: auto;
     }
-    /* Dark mode for move history */
     .dark-mode #moveList {
       background: #333;
     }
@@ -127,7 +126,7 @@
 
   <!-- Main container: board on the left, status on the right -->
   <div id="mainContainer">
-    <!-- Captured pieces above the board -->
+    <!-- Captured pieces containers -->
     <div id="capturedTop"></div>
     <!-- Board wrapper with external coordinate notation -->
     <div id="boardWrapper">
@@ -213,20 +212,48 @@
       }
     });
 
-    // Update the move history display in PGN-like notation
+    // Helper function to flip a square coordinate if playing as Black
+    function flipSquare(sq) {
+      // Files: a b c d e f g h
+      var files = "abcdefgh";
+      var file = sq[0];
+      var rank = sq[1];
+      var flippedFile = files[7 - files.indexOf(file)];
+      var flippedRank = (9 - parseInt(rank)).toString();
+      return flippedFile + flippedRank;
+    }
+
+    // Update the move history display in short notation.
     function updateMoveList() {
-      var history = game.history();
+      // Use verbose history to get from/to squares
+      var history = game.history({ verbose: true });
       var moveText = "";
       for (var i = 0; i < history.length; i++) {
+        var move = history[i];
+        var fromSq = move.from;
+        var toSq = move.to;
+        // If playing as black, flip the coordinates.
+        if (playerColor === "black") {
+          fromSq = flipSquare(fromSq);
+          toSq = flipSquare(toSq);
+        }
+        // For castling, use the standard notation
+        var san = move.san;
+        if (san === "O-O" || san === "O-O-O") {
+          // leave as is
+        } else if (playerColor === "black") {
+          // Instead of trying to transform the entire SAN, display a simple "from-to" notation.
+          san = fromSq + "-" + toSq;
+        }
         if (i % 2 === 0) {
           moveText += ((i / 2) + 1) + ". ";
         }
-        moveText += history[i] + " ";
+        moveText += san + " ";
       }
       moveListEl.innerHTML = moveText.trim();
     }
 
-    // Shared function to update captured pieces based on a move
+    // Shared function to update captured pieces based on a move.
     function updateCaptured(move) {
       var capturedPieceCode;
       if (move.color === "w") {
@@ -270,8 +297,8 @@
       if (move.captured) {
         updateCaptured(move);
       }
-      updateGameStatus(); // Check if the move ended the game
-      updateMoveList();   // Update move history
+      updateGameStatus();
+      updateMoveList();
 
       // After player's move, let Stockfish respond.
       window.setTimeout(makeBestMove, 250);
@@ -295,13 +322,13 @@
           if (move && move.captured) {
             updateCaptured(move);
           }
-          updateGameStatus(); // Check if the move ended the game
-          updateMoveList();   // Update move history
+          updateGameStatus();
+          updateMoveList();
         }
       };
     }
 
-    // Check if the game is over or if there's check, and display result
+    // Check if the game is over or if there's check, and display result.
     function updateGameStatus() {
       var status = "";
 
@@ -350,7 +377,6 @@
         capturedTopContainer = document.getElementById("capturedTop");
       }
 
-      // Reinitialize the board with the starting position
       board = Chessboard("board", {
         position: "start",
         orientation: playerColor,
@@ -363,7 +389,7 @@
       if (playerColor === "black") {
         setTimeout(makeBestMove, 250);
       }
-      updateMoveList(); // Initialize move list display
+      updateMoveList();
     });
   </script>
 </body>

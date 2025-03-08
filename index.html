@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v11 -->
+  <!-- Chessboard.js CSS via unpkg v12 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
     body {
@@ -54,7 +54,7 @@
     }
     #fileNotation div {
       display: inline-block;
-      width: 49px; /* Slightly less than 50 to avoid spacing issues */
+      width: 49px; /* Slightly less than 50 to avoid over-spacing */
       text-align: center;
     }
     /* Rank (numbers) notation styling */
@@ -212,43 +212,15 @@
       }
     });
 
-    // Helper function to flip a square coordinate if playing as Black
-    function flipSquare(sq) {
-      // Files: a b c d e f g h
-      var files = "abcdefgh";
-      var file = sq[0];
-      var rank = sq[1];
-      var flippedFile = files[7 - files.indexOf(file)];
-      var flippedRank = (9 - parseInt(rank)).toString();
-      return flippedFile + flippedRank;
-    }
-
-    // Update the move history display in short notation.
+    // Update the move history display using SAN.
     function updateMoveList() {
-      // Use verbose history to get from/to squares
-      var history = game.history({ verbose: true });
+      var history = game.history(); // SAN moves
       var moveText = "";
       for (var i = 0; i < history.length; i++) {
-        var move = history[i];
-        var fromSq = move.from;
-        var toSq = move.to;
-        // If playing as black, flip the coordinates.
-        if (playerColor === "black") {
-          fromSq = flipSquare(fromSq);
-          toSq = flipSquare(toSq);
-        }
-        // For castling, use the standard notation
-        var san = move.san;
-        if (san === "O-O" || san === "O-O-O") {
-          // leave as is
-        } else if (playerColor === "black") {
-          // Instead of trying to transform the entire SAN, display a simple "from-to" notation.
-          san = fromSq + "-" + toSq;
-        }
         if (i % 2 === 0) {
           moveText += ((i / 2) + 1) + ". ";
         }
-        moveText += san + " ";
+        moveText += history[i] + " ";
       }
       moveListEl.innerHTML = moveText.trim();
     }
@@ -331,7 +303,6 @@
     // Check if the game is over or if there's check, and display result.
     function updateGameStatus() {
       var status = "";
-
       if (game.in_checkmate()) {
         if (game.turn() === "w") {
           status = "Black wins by checkmate!";
@@ -355,8 +326,31 @@
       } else {
         status = "";
       }
-
+      
+      // Set status color based on the message:
+      // Good (green) if your opponent is in trouble,
+      // Bad (red) if you're in trouble,
+      // Neutral (blue) for draws or stalemates.
+      var statusColor = "blue"; // default neutral
+      var playerColorCap = playerColor.charAt(0).toUpperCase() + playerColor.slice(1);
+      
+      if (status.includes("wins by checkmate!")) {
+        if (status.startsWith(playerColorCap)) {
+          statusColor = "green"; // you win
+        } else {
+          statusColor = "red"; // you lose
+        }
+      } else if (status === "Stalemate!" || status.includes("Draw")) {
+        statusColor = "blue"; // neutral draw
+      } else if (status.includes("is in check!")) {
+        if (status.startsWith(playerColorCap)) {
+          statusColor = "red"; // you are in check
+        } else {
+          statusColor = "green"; // opponent is in check
+        }
+      }
       gameStatusEl.innerHTML = status;
+      gameStatusEl.style.color = statusColor;
     }
 
     // Start or reset the game when "Start Game" is clicked.

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v3 -->
+  <!-- Chessboard.js CSS via unpkg v4 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   <style>
     body {
@@ -46,7 +46,7 @@
       font-weight: bold;
       display: none;
     }
-    /* Rank (numbers) notation styling using flex for even spacing */
+    /* Rank (numbers) notation styling */
     #rankNotation {
       position: absolute;
       top: 0;
@@ -59,8 +59,10 @@
       justify-content: space-between;
     }
     #rankNotation div {
-      height: 50px; /* 400px / 8 squares */
-      line-height: 50px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
   </style>
 </head>
@@ -161,7 +163,6 @@
     // Shared function to update captured pieces based on a move
     function updateCaptured(move) {
       var capturedPieceCode;
-      // Determine captured piece image code based on move color.
       if(move.color === 'w') {
         capturedPieceCode = 'b' + move.captured.toUpperCase();
         if(playerColor === 'white') {
@@ -184,7 +185,7 @@
       var move = game.move({
         from: source,
         to: target,
-        promotion: 'q' // Always promote to queen.
+        promotion: 'q'
       });
       if (move === null) return 'snapback';
       
@@ -219,31 +220,27 @@
       difficulty = parseInt(document.getElementById('difficulty').value);
       playerColor = document.getElementById('color').value;
       game.reset();
-      // Reset captured pieces containers
       document.getElementById('capturedTop').innerHTML = "";
       document.getElementById('capturedBottom').innerHTML = "";
-      // Assign captured pieces containers based on player's side.
       if(playerColor === 'white') {
-        capturedBottomContainer = document.getElementById('capturedBottom'); // player's captures (black pieces)
-        capturedTopContainer = document.getElementById('capturedTop');         // opponent's captures (white pieces)
+        capturedBottomContainer = document.getElementById('capturedBottom');
+        capturedTopContainer = document.getElementById('capturedTop');
       } else {
-        capturedBottomContainer = document.getElementById('capturedBottom'); // player's captures (white pieces)
-        capturedTopContainer = document.getElementById('capturedTop');         // opponent's captures (black pieces)
+        capturedBottomContainer = document.getElementById('capturedBottom');
+        capturedTopContainer = document.getElementById('capturedTop');
       }
       // Show external coordinate notation
       document.getElementById('fileNotation').style.display = 'block';
       document.getElementById('rankNotation').style.display = 'flex';
       
-      // Reinitialize the board with the starting position.
       board = Chessboard('board', {
         position: 'start',
         orientation: playerColor,
         draggable: true,
         onDrop: onDrop,
-        showNotation: false,  // Using our external notation
+        showNotation: false,
         pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
       });
-      // If playing as black, let Stockfish (white) move first.
       if(playerColor === 'black') {
         setTimeout(makeBestMove, 250);
       }

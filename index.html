@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS for board styling via unpkg -->
+  <!-- Chessboard.js CSS via unpkg -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   <style>
     body { font-family: sans-serif; text-align: center; }
@@ -38,9 +38,28 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <!-- Chessboard.js for board visuals via unpkg -->
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-  <!-- Stockfish engine loaded via jsDelivr -->
+  
+  <!-- Load Stockfish.js via a blob workaround to bypass cross-origin restrictions -->
   <script>
-    var stockfish = new Worker("https://cdn.jsdelivr.net/gh/niklasf/stockfish.js/stockfish.js");
+    var stockfish; // Global variable for our worker
+
+    function loadStockfishWorker(url, callback) {
+      fetch(url)
+        .then(response => response.text())
+        .then(text => {
+          const blob = new Blob([text], { type: 'application/javascript' });
+          const blobURL = URL.createObjectURL(blob);
+          callback(new Worker(blobURL));
+        })
+        .catch(err => {
+          console.error("Error loading Stockfish worker:", err);
+        });
+    }
+
+    // Load Stockfish.js from jsDelivr
+    loadStockfishWorker("https://cdn.jsdelivr.net/gh/niklasf/stockfish.js/stockfish.js", function(worker) {
+      stockfish = worker;
+    });
   </script>
   
   <script>
@@ -48,7 +67,7 @@
     var game = new Chess();
     var playerColor = 'white';
     var difficulty = 10; // Default search depth for Stockfish
-    
+
     // Called when a piece is dropped on the board.
     function onDrop(source, target) {
       var move = game.move({
@@ -60,12 +79,16 @@
       // After player's move, let Stockfish respond.
       window.setTimeout(makeBestMove, 250);
     }
-    
+
     // Request and execute Stockfish's best move.
     function makeBestMove() {
+      if (!stockfish) {
+        console.error("Stockfish worker not loaded yet.");
+        return;
+      }
       stockfish.postMessage("position fen " + game.fen());
       stockfish.postMessage("go depth " + difficulty);
-      
+
       stockfish.onmessage = function(event) {
         var line = event.data;
         if (line.indexOf("bestmove") !== -1) {
@@ -75,7 +98,7 @@
         }
       };
     }
-    
+
     // Start or reset the game when "Start Game" is clicked.
     document.getElementById('startBtn').addEventListener('click', function() {
       difficulty = parseInt(document.getElementById('difficulty').value);
@@ -85,7 +108,9 @@
         position: 'start',
         orientation: playerColor,
         draggable: true,
-        onDrop: onDrop
+        onDrop: onDrop,
+        // Use external piece images hosted on chessboardjs.com
+        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
       });
     });
   </script>

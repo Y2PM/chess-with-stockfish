@@ -20,4 +20,4 @@ This interactive chess game lets you play against the **Stockfish** chess engine
 
 ## 🚀 Get Started  
 
-Clone or download the repository and open `index.html` in a browser to start playing!
+Clone or download the repository and open `index.html` in a browser to start playing! Or try it here on the Github pages site https://y2pm.github.io/chess-with-stockfish/.

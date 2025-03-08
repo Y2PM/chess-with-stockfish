@@ -4,12 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg -->
+  <!-- Chessboard.js CSS via unpkg v1 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   <style>
-    body { font-family: sans-serif; text-align: center; }
-    #board { width: 400px; margin: 20px auto; }
-    #controls { margin: 20px; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    /* Dark mode styles */
+    .dark-mode {
+      background-color: #222;
+      color: #ddd;
+    }
+    #controls {
+      margin-bottom: 10px;
+    }
+    /* Board container styling */
+    #boardContainer {
+      position: relative;
+      display: inline-block;
+      margin: 20px;
+    }
+    /* Captured pieces containers */
+    #capturedTop, #capturedBottom {
+      margin: 10px auto;
+      width: 400px;
+      min-height: 40px;
+    }
+    /* Adjust chessboard notation if present */
+    .chessboard .notation {
+      font-size: 14px;
+      color: inherit;
+    }
   </style>
 </head>
 <body>
@@ -29,8 +58,16 @@
     </select>
     &nbsp;&nbsp;
     <button id="startBtn">Start Game</button>
+    &nbsp;&nbsp;
+    <label for="darkToggle">Dark Mode:</label>
+    <input type="checkbox" id="darkToggle">
   </div>
-  <div id="board"></div>
+  <!-- Captured pieces containers -->
+  <div id="capturedTop"></div>
+  <div id="boardContainer">
+    <div id="board"></div>
+  </div>
+  <div id="capturedBottom"></div>
 
   <!-- jQuery (required by Chessboard.js) -->
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -41,7 +78,7 @@
   
   <!-- Load Stockfish.js via a blob workaround to bypass cross-origin restrictions -->
   <script>
-    var stockfish; // Global variable for our worker
+    var stockfish; // Global Stockfish worker
 
     function loadStockfishWorker(url, callback) {
       fetch(url)
@@ -55,7 +92,6 @@
           console.error("Error loading Stockfish worker:", err);
         });
     }
-
     // Load Stockfish.js from jsDelivr
     loadStockfishWorker("https://cdn.jsdelivr.net/gh/niklasf/stockfish.js/stockfish.js", function(worker) {
       stockfish = worker;
@@ -67,6 +103,25 @@
     var game = new Chess();
     var playerColor = 'white';
     var difficulty = 10; // Default search depth for Stockfish
+    // Containers for captured pieces (will be assigned on start)
+    var capturedTopContainer, capturedBottomContainer;
+
+    // Initially, display an empty board (no pieces, no notation)
+    board = Chessboard('board', {
+      position: {},  // empty board
+      draggable: false,
+      showNotation: false,
+      pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+    });
+
+    // Dark mode toggle handler
+    document.getElementById('darkToggle').addEventListener('change', function() {
+      if(this.checked) {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+    });
 
     // Called when a piece is dropped on the board.
     function onDrop(source, target) {
@@ -76,6 +131,27 @@
         promotion: 'q' // Always promote to queen.
       });
       if (move === null) return 'snapback';
+
+      // If a piece was captured, update the appropriate captured pieces container.
+      if(move.captured) {
+        var capturedPieceCode;
+        // For white's move, captured piece is black; for black's move, captured is white.
+        if(move.color === 'w') {
+          capturedPieceCode = 'b' + move.captured.toUpperCase();
+          if(playerColor === 'white') {
+            capturedBottomContainer.innerHTML += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' + capturedPieceCode + '.png" style="height:30px; margin:2px;">';
+          } else {
+            capturedTopContainer.innerHTML += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' + capturedPieceCode + '.png" style="height:30px; margin:2px;">';
+          }
+        } else if(move.color === 'b') {
+          capturedPieceCode = 'w' + move.captured.toUpperCase();
+          if(playerColor === 'black') {
+            capturedBottomContainer.innerHTML += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' + capturedPieceCode + '.png" style="height:30px; margin:2px;">';
+          } else {
+            capturedTopContainer.innerHTML += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' + capturedPieceCode + '.png" style="height:30px; margin:2px;">';
+          }
+        }
+      }
       // After player's move, let Stockfish respond.
       window.setTimeout(makeBestMove, 250);
     }
@@ -88,13 +164,16 @@
       }
       stockfish.postMessage("position fen " + game.fen());
       stockfish.postMessage("go depth " + difficulty);
-
+      
       stockfish.onmessage = function(event) {
         var line = event.data;
         if (line.indexOf("bestmove") !== -1) {
           var bestMove = line.split(" ")[1];
           game.move(bestMove, {sloppy: true});
           board.position(game.fen());
+          // Check if Stockfish's move captured a piece.
+          // (We can detect this by comparing the FEN before/after or by using chess.js history.
+          // For simplicity, this demo only handles captures on player's moves.)
         }
       };
     }
@@ -104,16 +183,31 @@
       difficulty = parseInt(document.getElementById('difficulty').value);
       playerColor = document.getElementById('color').value;
       game.reset();
+      // Reset captured pieces containers
+      document.getElementById('capturedTop').innerHTML = "";
+      document.getElementById('capturedBottom').innerHTML = "";
+      // Set container assignment based on player's chosen color.
+      // If player is white, then white (player) is at the bottom.
+      if(playerColor === 'white') {
+        capturedBottomContainer = document.getElementById('capturedBottom'); // will hold pieces captured by white (i.e. black pieces)
+        capturedTopContainer = document.getElementById('capturedTop');         // will hold pieces captured by black (i.e. white pieces)
+      } else {
+        capturedBottomContainer = document.getElementById('capturedBottom'); // will hold pieces captured by black (i.e. white pieces)
+        capturedTopContainer = document.getElementById('capturedTop');         // will hold pieces captured by white (i.e. black pieces)
+      }
+      // If a board instance already exists, destroy it.
+      if(board.destroy) { board.destroy(); }
+      // Reinitialize the board with the starting position, pieces, draggable enabled, and show notation.
       board = Chessboard('board', {
         position: 'start',
         orientation: playerColor,
         draggable: true,
         onDrop: onDrop,
-        // Use external piece images hosted on chessboardjs.com
+        showNotation: true,
         pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
       });
       // If playing as black, let Stockfish (white) move first.
-      if (playerColor === 'black') {
+      if(playerColor === 'black') {
         setTimeout(makeBestMove, 250);
       }
     });

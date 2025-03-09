@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v16 -->
+  <!-- Chessboard.js CSS via unpkg v17 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
     body {
@@ -22,7 +22,7 @@
     #controls {
       margin-bottom: 10px;
     }
-    /* Row for file upload */
+    /* Upload rows */
     #uploadRow, #uploadOppRow {
       margin-bottom: 10px;
     }
@@ -58,7 +58,7 @@
     }
     #fileNotation div {
       display: inline-block;
-      width: 49px;
+      width: 49px; /* Slightly less than 50 to avoid spacing issues */
       text-align: center;
     }
     /* Rank (numbers) notation styling */
@@ -140,24 +140,11 @@
 
   <!-- Main container: board on the left, status on the right -->
   <div id="mainContainer">
-    <!-- Captured pieces containers -->
     <div id="capturedTop"></div>
-    <!-- Board wrapper with external coordinate notation -->
     <div id="boardWrapper">
       <div id="board" style="width: 100%; height: 100%;"></div>
-      <div id="fileNotation">
-        <div>a</div><div>b</div><div>c</div><div>d</div><div>e</div><div>f</div><div>g</div><div>h</div>
-      </div>
-      <div id="rankNotation">
-        <div>8</div>
-        <div>7</div>
-        <div>6</div>
-        <div>5</div>
-        <div>4</div>
-        <div>3</div>
-        <div>2</div>
-        <div>1</div>
-      </div>
+      <div id="fileNotation"></div>
+      <div id="rankNotation"></div>
     </div>
     <div id="capturedBottom"></div>
   </div>
@@ -177,7 +164,7 @@
   <!-- Chessboard.js for board visuals via unpkg -->
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
 
-  <!-- Load Stockfish.js via a blob workaround to bypass cross-origin restrictions -->
+  <!-- Load Stockfish.js via a blob workaround -->
   <script>
     var stockfish; // Global Stockfish worker
 
@@ -193,7 +180,6 @@
           console.error("Error loading Stockfish worker:", err);
         });
     }
-    // Load Stockfish.js from jsDelivr
     loadStockfishWorker("https://cdn.jsdelivr.net/gh/niklasf/stockfish.js/stockfish.js", function(worker) {
       stockfish = worker;
     });
@@ -204,21 +190,23 @@
     var game = new Chess();
     var playerColor = "white";
     var difficulty = 10; // Default search depth for Stockfish
-    var customKingImage = null;      // For the human player's king
-    var customOppKingImage = null;   // For the opponent's king
-    // Captured pieces containers will be set on game start.
+    var customKingImage = null;      // For human player's king
+    var customOppKingImage = null;   // For opponent's king
     var capturedTopContainer, capturedBottomContainer;
     var gameStatusEl = document.getElementById("gameStatus");
     var moveListEl = document.getElementById("moveList");
 
-    // Helper function to flip a square coordinate.
-    function flipSquare(sq) {
-      var files = "abcdefgh";
-      var file = sq[0];
-      var rank = sq[1];
-      var flippedFile = files[7 - files.indexOf(file)];
-      var flippedRank = (9 - parseInt(rank)).toString();
-      return flippedFile + flippedRank;
+    // Update board notation to match board orientation (flip for black)
+    function updateBoardNotation() {
+      var fileLabels = document.getElementById("fileNotation");
+      var rankLabels = document.getElementById("rankNotation");
+      if (playerColor === "white") {
+        fileLabels.innerHTML = "<div>a</div><div>b</div><div>c</div><div>d</div><div>e</div><div>f</div><div>g</div><div>h</div>";
+        rankLabels.innerHTML = "<div>8</div><div>7</div><div>6</div><div>5</div><div>4</div><div>3</div><div>2</div><div>1</div>";
+      } else {
+        fileLabels.innerHTML = "<div>h</div><div>g</div><div>f</div><div>e</div><div>d</div><div>c</div><div>b</div><div>a</div>";
+        rankLabels.innerHTML = "<div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div>";
+      }
     }
 
     // Event listener for the human king image upload.
@@ -261,29 +249,21 @@
       reader.readAsDataURL(file);
     });
 
-    // Piece theme function: use custom images if provided.
+    // Piece theme function: use custom images for kings.
     function customPieceTheme(piece) {
       // If playing as white, human's king is wK, opponent's king is bK.
       // If playing as black, human's king is bK, opponent's king is wK.
       if (playerColor === "white") {
-        if (piece === "wK" && customKingImage) {
-          return customKingImage;
-        }
-        if (piece === "bK" && customOppKingImage) {
-          return customOppKingImage;
-        }
+        if (piece === "wK" && customKingImage) return customKingImage;
+        if (piece === "bK" && customOppKingImage) return customOppKingImage;
       } else if (playerColor === "black") {
-        if (piece === "bK" && customKingImage) {
-          return customKingImage;
-        }
-        if (piece === "wK" && customOppKingImage) {
-          return customOppKingImage;
-        }
+        if (piece === "bK" && customKingImage) return customKingImage;
+        if (piece === "wK" && customOppKingImage) return customOppKingImage;
       }
       return "https://chessboardjs.com/img/chesspieces/wikipedia/" + piece + ".png";
     }
 
-    // Initialize an empty board (using an empty FEN for no pieces)
+    // Initialize an empty board.
     board = Chessboard("board", {
       position: "8/8/8/8/8/8/8/8",
       draggable: false,
@@ -291,7 +271,7 @@
       pieceTheme: customPieceTheme
     });
 
-    // Dark mode toggle handler
+    // Dark mode toggle.
     document.getElementById("darkToggle").addEventListener("change", function () {
       if (this.checked) {
         document.body.classList.add("dark-mode");
@@ -300,99 +280,54 @@
       }
     });
 
-    // Update the move history display.
+    // Update move history display using SAN.
     function updateMoveList() {
-      // When playing as white, use the standard SAN history.
-      if (playerColor === "white") {
-        var history = game.history();
-        var moveText = "";
-        for (var i = 0; i < history.length; i++) {
-          if (i % 2 === 0) {
-            moveText += ((i / 2) + 1) + ". ";
-          }
-          moveText += history[i] + " ";
+      var history = game.history();
+      var moveText = "";
+      for (var i = 0; i < history.length; i++) {
+        if (i % 2 === 0) {
+          moveText += ((i / 2) + 1) + ". ";
         }
-        moveListEl.innerHTML = moveText.trim();
-      } else {
-        // For black, flip move coordinates so the moves display from your perspective.
-        var history = game.history({ verbose: true });
-        var moveText = "";
-        for (var i = 0; i < history.length; i++) {
-          if (i % 2 === 0) {
-            moveText += ((i / 2) + 1) + ". ";
-          }
-          var move = history[i];
-          var san = move.san;
-          // For castling, use the same notation.
-          if (san === "O-O" || san === "O-O-O") {
-            moveText += san + " ";
-          } else {
-            // For other moves, reconstruct a simple from-to notation with flipped squares.
-            var flippedFrom = flipSquare(move.from);
-            var flippedTo = flipSquare(move.to);
-            san = flippedFrom + "-" + flippedTo;
-            if (move.promotion) {
-              san += "=" + move.promotion.toUpperCase();
-            }
-            moveText += san + " ";
-          }
-        }
-        moveListEl.innerHTML = moveText.trim();
+        moveText += history[i] + " ";
       }
+      moveListEl.innerHTML = moveText.trim();
     }
 
-    // Shared function to update captured pieces based on a move.
+    // Update captured pieces.
     function updateCaptured(move) {
       var capturedPieceCode;
       if (move.color === "w") {
         capturedPieceCode = "b" + move.captured.toUpperCase();
         if (playerColor === "white") {
-          capturedBottomContainer.innerHTML +=
-            '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' +
-            capturedPieceCode +
-            '.png" style="height:30px; margin:2px;">';
+          capturedBottomContainer.innerHTML += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' +
+            capturedPieceCode + '.png" style="height:30px; margin:2px;">';
         } else {
-          capturedTopContainer.innerHTML +=
-            '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' +
-            capturedPieceCode +
-            '.png" style="height:30px; margin:2px;">';
+          capturedTopContainer.innerHTML += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' +
+            capturedPieceCode + '.png" style="height:30px; margin:2px;">';
         }
       } else if (move.color === "b") {
         capturedPieceCode = "w" + move.captured.toUpperCase();
         if (playerColor === "black") {
-          capturedBottomContainer.innerHTML +=
-            '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' +
-            capturedPieceCode +
-            '.png" style="height:30px; margin:2px;">';
+          capturedBottomContainer.innerHTML += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' +
+            capturedPieceCode + '.png" style="height:30px; margin:2px;">';
         } else {
-          capturedTopContainer.innerHTML +=
-            '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' +
-            capturedPieceCode +
-            '.png" style="height:30px; margin:2px;">';
+          capturedTopContainer.innerHTML += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' +
+            capturedPieceCode + '.png" style="height:30px; margin:2px;">';
         }
       }
     }
 
-    // Called when a piece is dropped on the board (human move).
+    // When a piece is dropped (human move).
     function onDrop(source, target) {
-      var move = game.move({
-        from: source,
-        to: target,
-        promotion: "q"
-      });
+      var move = game.move({ from: source, to: target, promotion: "q" });
       if (move === null) return "snapback";
-
-      if (move.captured) {
-        updateCaptured(move);
-      }
+      if (move.captured) updateCaptured(move);
       updateGameStatus();
       updateMoveList();
-
-      // After player's move, let Stockfish respond.
       window.setTimeout(makeBestMove, 250);
     }
 
-    // Request and execute Stockfish's best move.
+    // Execute Stockfish's move.
     function makeBestMove() {
       if (!stockfish) {
         console.error("Stockfish worker not loaded yet.");
@@ -400,31 +335,24 @@
       }
       stockfish.postMessage("position fen " + game.fen());
       stockfish.postMessage("go depth " + difficulty);
-
       stockfish.onmessage = function (event) {
         var line = event.data;
         if (line.indexOf("bestmove") !== -1) {
           var bestMove = line.split(" ")[1];
           var move = game.move(bestMove, { sloppy: true });
           board.position(game.fen());
-          if (move && move.captured) {
-            updateCaptured(move);
-          }
+          if (move && move.captured) updateCaptured(move);
           updateGameStatus();
           updateMoveList();
         }
       };
     }
 
-    // Check if the game is over or if there's check, and display result.
+    // Update game status and set message color.
     function updateGameStatus() {
       var status = "";
       if (game.in_checkmate()) {
-        if (game.turn() === "w") {
-          status = "Black wins by checkmate!";
-        } else {
-          status = "White wins by checkmate!";
-        }
+        status = game.turn() === "w" ? "Black wins by checkmate!" : "White wins by checkmate!";
       } else if (game.in_stalemate()) {
         status = "Stalemate!";
       } else if (game.in_threefold_repetition()) {
@@ -434,38 +362,25 @@
       } else if (game.in_draw()) {
         status = "It's a draw!";
       } else if (game.in_check()) {
-        if (game.turn() === "w") {
-          status = "White is in check!";
-        } else {
-          status = "Black is in check!";
-        }
+        status = game.turn() === "w" ? "White is in check!" : "Black is in check!";
       } else {
         status = "";
       }
-      
-      // Set status color: green (good), red (bad), blue (neutral)
+      // Determine color: green (good), red (bad), blue (neutral)
       var statusColor = "blue"; // default neutral
       var playerColorCap = playerColor.charAt(0).toUpperCase() + playerColor.slice(1);
       if (status.includes("wins by checkmate!")) {
-        if (status.startsWith(playerColorCap)) {
-          statusColor = "green"; // you win
-        } else {
-          statusColor = "red"; // you lose
-        }
+        statusColor = status.startsWith(playerColorCap) ? "green" : "red";
       } else if (status === "Stalemate!" || status.includes("Draw")) {
-        statusColor = "blue"; // neutral
+        statusColor = "blue";
       } else if (status.includes("is in check!")) {
-        if (status.startsWith(playerColorCap)) {
-          statusColor = "red"; // you're in check
-        } else {
-          statusColor = "green"; // opponent in check
-        }
+        statusColor = status.startsWith(playerColorCap) ? "red" : "green";
       }
       gameStatusEl.innerHTML = status;
       gameStatusEl.style.color = statusColor;
     }
 
-    // Start or reset the game when "Start Game" is clicked.
+    // Start/Reset game.
     document.getElementById("startBtn").addEventListener("click", function () {
       difficulty = parseInt(document.getElementById("difficulty").value);
       playerColor = document.getElementById("color").value;
@@ -474,7 +389,6 @@
       document.getElementById("capturedBottom").innerHTML = "";
       gameStatusEl.innerHTML = "";
       moveListEl.innerHTML = "";
-
       if (playerColor === "white") {
         capturedBottomContainer = document.getElementById("capturedBottom");
         capturedTopContainer = document.getElementById("capturedTop");
@@ -482,7 +396,6 @@
         capturedBottomContainer = document.getElementById("capturedBottom");
         capturedTopContainer = document.getElementById("capturedTop");
       }
-
       board = Chessboard("board", {
         position: "start",
         orientation: playerColor,
@@ -491,7 +404,7 @@
         showNotation: false,
         pieceTheme: customPieceTheme
       });
-
+      updateBoardNotation();
       if (playerColor === "black") {
         setTimeout(makeBestMove, 250);
       }

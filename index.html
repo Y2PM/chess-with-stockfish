@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chess with Stockfish</title>
-  <!-- Chessboard.js CSS via unpkg v15 -->
+  <!-- Chessboard.js CSS via unpkg v16 -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
     body {
@@ -58,7 +58,7 @@
     }
     #fileNotation div {
       display: inline-block;
-      width: 49px; /* Slightly less than 50 to avoid spacing issues */
+      width: 49px;
       text-align: center;
     }
     /* Rank (numbers) notation styling */
@@ -211,6 +211,16 @@
     var gameStatusEl = document.getElementById("gameStatus");
     var moveListEl = document.getElementById("moveList");
 
+    // Helper function to flip a square coordinate.
+    function flipSquare(sq) {
+      var files = "abcdefgh";
+      var file = sq[0];
+      var rank = sq[1];
+      var flippedFile = files[7 - files.indexOf(file)];
+      var flippedRank = (9 - parseInt(rank)).toString();
+      return flippedFile + flippedRank;
+    }
+
     // Event listener for the human king image upload.
     document.getElementById("uploadKing").addEventListener("change", function(e) {
       var file = e.target.files[0];
@@ -290,17 +300,45 @@
       }
     });
 
-    // Update the move history display using SAN.
+    // Update the move history display.
     function updateMoveList() {
-      var history = game.history(); // SAN moves
-      var moveText = "";
-      for (var i = 0; i < history.length; i++) {
-        if (i % 2 === 0) {
-          moveText += ((i / 2) + 1) + ". ";
+      // When playing as white, use the standard SAN history.
+      if (playerColor === "white") {
+        var history = game.history();
+        var moveText = "";
+        for (var i = 0; i < history.length; i++) {
+          if (i % 2 === 0) {
+            moveText += ((i / 2) + 1) + ". ";
+          }
+          moveText += history[i] + " ";
         }
-        moveText += history[i] + " ";
+        moveListEl.innerHTML = moveText.trim();
+      } else {
+        // For black, flip move coordinates so the moves display from your perspective.
+        var history = game.history({ verbose: true });
+        var moveText = "";
+        for (var i = 0; i < history.length; i++) {
+          if (i % 2 === 0) {
+            moveText += ((i / 2) + 1) + ". ";
+          }
+          var move = history[i];
+          var san = move.san;
+          // For castling, use the same notation.
+          if (san === "O-O" || san === "O-O-O") {
+            moveText += san + " ";
+          } else {
+            // For other moves, reconstruct a simple from-to notation with flipped squares.
+            var flippedFrom = flipSquare(move.from);
+            var flippedTo = flipSquare(move.to);
+            san = flippedFrom + "-" + flippedTo;
+            if (move.promotion) {
+              san += "=" + move.promotion.toUpperCase();
+            }
+            moveText += san + " ";
+          }
+        }
+        moveListEl.innerHTML = moveText.trim();
       }
-      moveListEl.innerHTML = moveText.trim();
     }
 
     // Shared function to update captured pieces based on a move.
